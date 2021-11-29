@@ -14,3 +14,6 @@ console.timeEnd('bcrypt')
 const isOk = bcrypt.compareSync(plainPW, hash)
 
 console.log(isOk);
+
+
+//require("crypto").randomBytes(64).toString("hex")

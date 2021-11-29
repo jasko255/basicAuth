@@ -1,7 +1,10 @@
 import express from 'express'
 import UserModel from  './schema.js'
-import { basicAuthMiddleware } from '../../auth/basic.js'
+
 import { adminOnly } from '../../auth/admin.js'
+import { JWTAuthenticate } from '../../auth/tools.js'
+import createHttpError from 'http-errors'
+import { JWTAuthMiddleware } from '../../auth/token.js'
 
 const usersRouter = express.Router()
 
@@ -16,7 +19,9 @@ usersRouter.post('/register', async (req, res, next) => {
     }
 })
 
-usersRouter.get('/', basicAuthMiddleware, async (req, res, next) => {
+
+// localhost:3003/users/me
+usersRouter.get('/', JWTAuthMiddleware, async (req, res, next) => {
     try {
         const users = await UserModel.find()
         res.send(users)
@@ -24,16 +29,18 @@ usersRouter.get('/', basicAuthMiddleware, async (req, res, next) => {
         next(error)
     }
 })
-
-usersRouter.get('/:me',  basicAuthMiddleware, async (req, res, next) => {
+//userId
+usersRouter.get('/me',  JWTAuthMiddleware,  async (req, res, next) => {
+  
     try {
+        console.log('`Route get ME')
         res.send(req.user)
     } catch (error) {
         next(error)
     }
 })
 
-usersRouter.put('/:me',  basicAuthMiddleware, async (req, res, next) => {
+usersRouter.put('/me',  JWTAuthMiddleware, async (req, res, next) => {
     try {
         
     } catch (error) {
@@ -41,7 +48,7 @@ usersRouter.put('/:me',  basicAuthMiddleware, async (req, res, next) => {
     }
 })
 
-usersRouter.delete('/:me',  basicAuthMiddleware, async (req, res, next) => {
+usersRouter.delete('/me',  JWTAuthMiddleware, async (req, res, next) => {
     try {
         await req.user.deleteOne()
     } catch (error) {
@@ -50,7 +57,7 @@ usersRouter.delete('/:me',  basicAuthMiddleware, async (req, res, next) => {
 })
 
 
-usersRouter.get('/userId', basicAuthMiddleware , adminOnly , async (req, res, next)=>{
+usersRouter.get('/:userId', JWTAuthMiddleware, adminOnly , async (req, res, next)=>{
 
     try {
     const user = await UserModel.findById(req.params.userId)
@@ -59,6 +66,27 @@ usersRouter.get('/userId', basicAuthMiddleware , adminOnly , async (req, res, ne
     next(error)
 }
 
+})
+
+
+usersRouter.post('/login', async (req, res, next)=>{
+    try {
+        const {email, password} = req.body
+
+        //1. verify credentials
+        const user = await UserModel.checkCredentials(email, password)
+        if (user){
+            const accessToken = await JWTAuthenticate(user)
+            res.send(accessToken)
+        }else {
+            next(createHttpError(401, 'Credentials are not ok'))
+        }
+
+        //2. create JWT
+
+    } catch (error) {
+        next(error)
+    }
 })
 
 export default usersRouter
